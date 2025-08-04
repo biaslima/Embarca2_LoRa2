@@ -20,8 +20,9 @@
 #define BTN_B     6
 
 // Pinos I2C para display
-#define I2C_SDA   4
-#define I2C_SCL   5
+#define I2C_SDA   14
+#define I2C_SCL   15
+#define I2C_PORT i2c1 
 #define DISPLAY_ADDR 0x3C
 
 // Variáveis globais
@@ -62,7 +63,7 @@ void init_spi(void) {
 
 void init_i2c(void) {
     // Configurar I2C para display
-    i2c_init(i2c0, 400000); // 400 kHz
+    i2c_init(I2C_PORT, 400000); // 400 kHz
     gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
     gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
     gpio_pull_up(I2C_SDA);
@@ -70,7 +71,7 @@ void init_i2c(void) {
 }
 
 void init_display(void) {
-    ssd1306_init(&display, 128, 64, false, DISPLAY_ADDR, i2c0);
+    ssd1306_init(&display, 128, 64, false, DISPLAY_ADDR, I2C_PORT);
     ssd1306_config(&display);
     ssd1306_fill(&display, false);
     
@@ -196,7 +197,6 @@ int main() {
     init_spi();
     init_i2c();
     init_display();
-    
     printf("Inicializando LoRa...\n");
     
     // Inicializar e configurar LoRa
