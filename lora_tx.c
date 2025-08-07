@@ -5,6 +5,7 @@
 #include "hardware/i2c.h"
 #include "rfm95.h"
 #include "ssd1306.h"
+#include "sensores.h"
 
 // Definições de pinos - BitDogLab
 #define PIN_RST   20
@@ -19,7 +20,6 @@
 #define BTN_A     5
 #define BTN_B     6
 
-// Pinos I2C para display
 #define I2C_SDA   14
 #define I2C_SCL   15
 #define I2C_PORT i2c1 
@@ -31,39 +31,34 @@ static char last_message[64] = "Aguardando...";
 static char status_msg[32] = "PRONTO";
 static int16_t last_rssi = 0;
 static int8_t last_snr = 0;
-static uint32_t msg_count = 0;
 static uint32_t tx_count = 0;
 static uint32_t rx_count = 0;
+static uint8_t contador = 0;
 
 void init_gpio(void) {
-    // LEDs
     gpio_init(LED_TESTE); gpio_set_dir(LED_TESTE, GPIO_OUT);
     gpio_init(LED_AZUL); gpio_set_dir(LED_AZUL, GPIO_OUT);
     gpio_init(LED_VERDE); gpio_set_dir(LED_VERDE, GPIO_OUT);
     gpio_init(LED_VERMELHO); gpio_set_dir(LED_VERMELHO, GPIO_OUT);
     
-    // Botões com pull-up
     gpio_init(BTN_A); gpio_set_dir(BTN_A, GPIO_IN); gpio_pull_up(BTN_A);
     gpio_init(BTN_B); gpio_set_dir(BTN_B, GPIO_IN); gpio_pull_up(BTN_B);
     
-    // Estado inicial dos LEDs
-    gpio_put(LED_AZUL, 1);  // Indica sistema operacional
+    gpio_put(LED_AZUL, 1);
     gpio_put(LED_VERDE, 0);
     gpio_put(LED_VERMELHO, 0);
     gpio_put(LED_TESTE, 0);
 }
 
 void init_spi(void) {
-    // Configurar SPI0 para LoRa (BitDogLab usa SPI0)
-    spi_init(spi0, 1000000); // 1 MHz
+    spi_init(spi0, 1000000);
     gpio_set_function(16, GPIO_FUNC_SPI); // SCK
     gpio_set_function(19, GPIO_FUNC_SPI); // MOSI
     gpio_set_function(18, GPIO_FUNC_SPI); // MISO
 }
 
 void init_i2c(void) {
-    // Configurar I2C para display
-    i2c_init(I2C_PORT, 400000); // 400 kHz
+    i2c_init(I2C_PORT, 400000);
     gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
     gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
     gpio_pull_up(I2C_SDA);
@@ -75,7 +70,6 @@ void init_display(void) {
     ssd1306_config(&display);
     ssd1306_fill(&display, false);
     
-    // Tela inicial
     ssd1306_draw_string(&display, "LoRa BitDogLab", 0, 0);
     ssd1306_draw_string(&display, "Freq: 915 MHz", 0, 8);
     ssd1306_draw_string(&display, "Power: 20 dBm", 0, 16);
@@ -86,167 +80,113 @@ void init_display(void) {
 }
 
 void update_display(void) {
-    char temp[32];
-    
+    char temp[64];
     ssd1306_fill(&display, false);
-    
-    // Título
+
     ssd1306_draw_string(&display, "LoRa Transceiver", 0, 0);
-    
-    // Linha divisória
     ssd1306_hline(&display, 0, 127, 9, true);
-    
-    // Status
     snprintf(temp, sizeof(temp), "Status: %s", status_msg);
     ssd1306_draw_string(&display, temp, 0, 12);
-    
-    // Contadores
     snprintf(temp, sizeof(temp), "TX:%lu RX:%lu", tx_count, rx_count);
     ssd1306_draw_string(&display, temp, 0, 20);
-    
-    // Última mensagem
     ssd1306_draw_string(&display, "Ultima msg:", 0, 28);
     ssd1306_draw_string(&display, last_message, 0, 36);
-    
-    // RSSI e SNR se houver dados
     if (last_rssi != 0) {
         snprintf(temp, sizeof(temp), "RSSI:%ddBm SNR:%ddB", last_rssi, last_snr);
         ssd1306_draw_string(&display, temp, 0, 44);
     }
-    
-    // Instruções
-    ssd1306_draw_string(&display, "A:Msg1  B:Msg2", 0, 56);
-    
+    ssd1306_draw_string(&display, "A: Sensores  B:Teste", 0, 56);
     ssd1306_send_data(&display);
 }
 
-void send_test_message(const char* message) {
-    char full_msg[64];
-    
-    // Adicionar identificador da placa + contador à mensagem
-    snprintf(full_msg, sizeof(full_msg), "P2:%s #%lu", message, ++msg_count);
-    
-    strcpy(status_msg, "ENVIANDO");
-    update_display();
-    
-    gpio_put(LED_TESTE, 1);
-    gpio_put(LED_VERDE, 1);
-    
-    printf("Enviando: %s\n", full_msg);
-    rfm95_send_message(full_msg);
-    
+void send_sensor_data(void) {
+    char dados[64];
+    sensores_ler(dados, sizeof(dados));
+
+    char pacote[80];
+    snprintf(pacote, sizeof(pacote), "P2:%s #%d", dados, ++contador);
+
+    rfm95_send_message(pacote);
+    rfm95_set_mode_rx();
+
     tx_count++;
+    strcpy(last_message, pacote);
     strcpy(status_msg, "ENVIADO");
-    strcpy(last_message, full_msg);
-    
-    sleep_ms(300);
-    gpio_put(LED_TESTE, 0);
-    gpio_put(LED_VERDE, 0);
-    
-    strcpy(status_msg, "ESCUTANDO");
+    printf("Mensagem enviada: %s\n", pacote);
+    update_display();
+}
+
+void send_test_message(const char *msg) {
+    rfm95_send_message(msg);
+    rfm95_set_mode_rx();
+
+    tx_count++;
+    strcpy(last_message, msg);
+    strcpy(status_msg, "ENVIADO");
+    printf("Mensagem enviada: %s\n", msg);
     update_display();
 }
 
 void check_received_messages(void) {
     rfm95_packet_t packet;
-    
+
     if (rfm95_available()) {
         if (rfm95_receive_message(&packet)) {
             gpio_put(LED_VERDE, 1);
-            
+            sleep_ms(100);
+
             printf("Mensagem recebida: %s\n", packet.message);
             printf("RSSI: %d dBm, SNR: %d dB\n", packet.rssi, packet.snr);
-            
+
             strcpy(last_message, packet.message);
             last_rssi = packet.rssi;
             last_snr = packet.snr;
             rx_count++;
-            
+
             strcpy(status_msg, "RECEBIDO");
             update_display();
-            
-            sleep_ms(1000);
+            sleep_ms(500);
             gpio_put(LED_VERDE, 0);
             strcpy(status_msg, "ESCUTANDO");
         }
     }
 }
 
-void blink_status_led(void) {
-    static uint32_t last_blink = 0;
-    static bool led_state = false;
-    
-    uint32_t now = time_us_32() / 1000; // ms
-    
-    if (now - last_blink > 1000) { // Piscar a cada 1 segundo
-        led_state = !led_state;
-        gpio_put(LED_AZUL, led_state);
-        last_blink = now;
-    }
-}
-
 int main() {
     stdio_init_all();
-    sleep_ms(2000); // Aguardar inicialização serial
-    
-    printf("=== LoRa BitDogLab Transceiver ===\n");
-    printf("Iniciando sistema...\n");
-    
-    // Inicializar periféricos
+    sleep_ms(2000);
+
     init_gpio();
     init_spi();
     init_i2c();
     init_display();
-    printf("Inicializando LoRa...\n");
-    
-    // Inicializar e configurar LoRa
+    sensores_init(I2C_PORT);
+
     rfm95_init(spi0, PIN_CS, PIN_RST, PIN_IRQ);
-    rfm95_config(915.0, 20); // 915 MHz, 20 dBm
-    
-    printf("LoRa configurado - 915 MHz, 20 dBm\n");
-    
-    // Colocar em modo de recepção
+    rfm95_config(915.0, 20);
     rfm95_set_mode_rx();
+
     strcpy(status_msg, "ESCUTANDO");
-    
-    printf("Sistema pronto! Aguardando comandos...\n");
-    printf("Botão A: Enviar 'Hello World'\n");
-    printf("Botão B: Enviar 'Test Message'\n");
-    
     update_display();
-    
-    // Loop principal
+
     while (true) {
-        // Verificar botões
         if (!gpio_get(BTN_A)) {
-            send_test_message("Hello World");
-            rfm95_set_mode_rx(); // Voltar para recepção
-            sleep_ms(200); // Debounce
+            gpio_put(LED_VERMELHO, 1);
+            send_sensor_data();
+            gpio_put(LED_VERMELHO, 0);
+            sleep_ms(300);
         }
-        
+
         if (!gpio_get(BTN_B)) {
+            gpio_put(LED_TESTE, 1);
             send_test_message("Test Message");
-            rfm95_set_mode_rx(); // Voltar para recepção
-            sleep_ms(200); // Debounce  
+            gpio_put(LED_TESTE, 0);
+            sleep_ms(300);
         }
-        
-        // Verificar mensagens recebidas
+
         check_received_messages();
-        
-        // Piscar LED de status
-        blink_status_led();
-        
-        // Atualizar display periodicamente
-        static uint32_t last_display_update = 0;
-        uint32_t now = time_us_32() / 1000;
-        
-        if (now - last_display_update > 5000) { // Atualizar a cada 5 segundos
-            update_display();
-            last_display_update = now;
-        }
-        
-        sleep_ms(50); // Pequena pausa para não sobrecarregar
+        sleep_ms(50);
     }
-    
+
     return 0;
 }

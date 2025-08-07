@@ -35,7 +35,13 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(lora_tx lora_tx.c rfm95.c ssd1306.c)
+add_executable(lora_tx lora_tx.c 
+    rfm95.c 
+    ssd1306.c
+    aht20.c
+    bmp280.c
+    sensores.c
+    )
 
 pico_set_program_name(lora_tx "lora_tx")
 pico_set_program_version(lora_tx "0.1")
@@ -48,6 +54,8 @@ pico_enable_stdio_usb(lora_tx 1)
 target_link_libraries(lora_tx
     hardware_spi
     hardware_i2c
+    hardware_adc
+    hardware_clocks
     pico_stdlib)
 
 # Add the standard include files to the build
