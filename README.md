@@ -61,7 +61,7 @@ Esse projeto é um transmissor LoRa (TX) feito em linguagem C, usando a platafor
 ## Sobre as bibliotecas 
 
 - As bibliotecas de periféricos (display, sensores, etc.) são **as que o professor já disponibilizou em atividades anteriores**.
-- Optei por **não utilizar sensor "bpm280"** por que a atividade pede o envio de duas informações e o "aht20" já faz isso(humidade e temperatura) e achei que ia dificultar a tarefa já que só dá para usar uma porta I2C na placa. Mas se quiserem, é só alterar o código princiapl pra colocar o outro sensor com pressão. 
+- Optei por **não utilizar sensor "bpm280"** por que a atividade pede o envio de duas informações e o "aht20" já faz isso(umidade e temperatura) e achei que ia dificultar a tarefa, já que só dá para usar uma porta I2C na placa. Mas se quiserem, é só alterar o código principal pra colocar o outro sensor com pressão. 
 - A parte de **LoRa foi adaptada**: uni a estrutura original do `LoRa.h` do professor com a biblioteca que utilizamos na atividade da semana passada.
 
 ---
