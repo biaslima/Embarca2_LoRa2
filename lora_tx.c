@@ -3,11 +3,11 @@
 #include "pico/stdlib.h"
 #include "hardware/spi.h"
 #include "hardware/i2c.h"
-#include "rfm95.h"
-#include "ssd1306.h"
-#include "sensores.h"
+#include "inc/rfm95.h"
+#include "inc/ssd1306.h"
+#include "inc/sensores.h"
 
-// Definições de pinos - BitDogLab
+
 #define PIN_RST   20
 #define PIN_CS    17
 #define PIN_IRQ   8
@@ -19,14 +19,21 @@
 
 #define BTN_A     5
 #define BTN_B     6
-
-#define I2C_SDA   14
-#define I2C_SCL   15
-#define I2C_PORT i2c1 
+ 
+// I2C Display
+#define DISPLAY_I2C_SDA   14
+#define DISPLAY_I2C_SCL   15
+#define DISPLAY_I2C_PORT i2c1 
 #define DISPLAY_ADDR 0x3C
+
+// I2C Sensores
+#define SENSOR_I2C_SDA    0
+#define SENSOR_I2C_SCL    1
+#define SENSOR_I2C_PORT i2c0
 
 // Variáveis globais
 ssd1306_t display;
+
 static char last_message[64] = "Aguardando...";
 static char status_msg[32] = "PRONTO";
 static int16_t last_rssi = 0;
@@ -57,16 +64,24 @@ void init_spi(void) {
     gpio_set_function(18, GPIO_FUNC_SPI); // MISO
 }
 
-void init_i2c(void) {
-    i2c_init(I2C_PORT, 400000);
-    gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
-    gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
-    gpio_pull_up(I2C_SDA);
-    gpio_pull_up(I2C_SCL);
+void init_display_i2c(void) {
+    i2c_init(DISPLAY_I2C_PORT, 400000);
+    gpio_set_function(DISPLAY_I2C_SDA, GPIO_FUNC_I2C);
+    gpio_set_function(DISPLAY_I2C_SCL, GPIO_FUNC_I2C);
+    gpio_pull_up(DISPLAY_I2C_SDA);
+    gpio_pull_up(DISPLAY_I2C_SCL);
+}
+
+void init_sensor_i2c(void) {
+    i2c_init(SENSOR_I2C_PORT, 400000);
+    gpio_set_function(SENSOR_I2C_SDA, GPIO_FUNC_I2C);
+    gpio_set_function(SENSOR_I2C_SCL, GPIO_FUNC_I2C);
+    gpio_pull_up(SENSOR_I2C_SDA);
+    gpio_pull_up(SENSOR_I2C_SCL);
 }
 
 void init_display(void) {
-    ssd1306_init(&display, 128, 64, false, DISPLAY_ADDR, I2C_PORT);
+    ssd1306_init(&display, 128, 64, false, DISPLAY_ADDR, DISPLAY_I2C_PORT);
     ssd1306_config(&display);
     ssd1306_fill(&display, false);
     
@@ -158,9 +173,10 @@ int main() {
 
     init_gpio();
     init_spi();
-    init_i2c();
+    init_display_i2c();  // Inicializa I2C para display
+    init_sensor_i2c();   // Inicializa I2C para sensores
     init_display();
-    sensores_init(I2C_PORT);
+    sensores_init(SENSOR_I2C_PORT);  // Usa o barramento I2C correto dos sensores
 
     rfm95_init(spi0, PIN_CS, PIN_RST, PIN_IRQ);
     rfm95_config(915.0, 20);

@@ -2,6 +2,10 @@
 #define AHT20_H
 
 
+#include "hardware/i2c.h" // Incluído para a definição de i2c_inst_t
+#include <stdbool.h>      // Incluído para a definição de bool, true, false
+#include <stdint.h>
+
 // Endereço I2C do AHT20
 #define AHT20_I2C_ADDR  0x38
 

@@ -36,11 +36,10 @@ pico_sdk_init()
 # Add executable. Default name is the project name, version 0.1
 
 add_executable(lora_tx lora_tx.c 
-    rfm95.c 
-    ssd1306.c
-    aht20.c
-    bmp280.c
-    sensores.c
+    src/rfm95.c 
+    src/ssd1306.c
+    src/aht20.c
+    src/sensores.c
     )
 
 pico_set_program_name(lora_tx "lora_tx")

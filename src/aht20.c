@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
-#include "aht20.h"
+#include "../inc/aht20.h"
 
 #define AHT20_I2C_ADDR      0x38
 #define AHT20_CMD_INIT      0xBE
